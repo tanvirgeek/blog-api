@@ -6,8 +6,17 @@ exports.register = async (req, res) => {
 };
 
 exports.login = async (req, res) => {
-  const result = await service.login(req.body);
-  res.json(result);
+  try {
+    const { email, password } = req.body;
+    const tokens = await service.login({ email, password });
+    res.status(200).json(tokens);
+  } catch (err) {
+    console.error(err);
+    res.status(err.statusCode || 500).json({
+      error: err.message || "Something went wrong",
+      statusCode: err.statusCode || 500,
+    });
+  }
 };
 
 exports.refresh = async (req, res) => {

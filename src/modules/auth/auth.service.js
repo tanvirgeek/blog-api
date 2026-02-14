@@ -20,14 +20,12 @@ exports.register = async ({ name, email, password }) => {
 
 exports.login = async ({ email, password }) => {
   const user = await User.findOne({ email });
-  if (!user) throw new Error("Invalid credentials");
+  if (!user) throw { message: "Email Not Found", statusCode: 401 };
 
-  if (!(await bcrypt.compare(password, user.password))) {
-    throw new Error("Invalid credentials");
-  }
+  const isMatch = await bcrypt.compare(password, user.password);
+  if (!isMatch) throw { message: "Invalid Password", statusCode: 401 };
 
   const payload = { id: user._id };
-
   const accessToken = generateAccessToken(payload);
   const refreshToken = generateRefreshToken(payload);
 
@@ -39,6 +37,7 @@ exports.login = async ({ email, password }) => {
 
   return { accessToken, refreshToken };
 };
+
 
 exports.refresh = async (token) => {
   if (!token) throw new Error("Missing refresh token");

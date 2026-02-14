@@ -9,7 +9,7 @@ exports.createBlog = async (req, res) => {
     title: req.body.title,
     content: req.body.content,
     author: req.user.id,
-    imageUrl: req.file ? `/uploads/${req.file.filename}` : undefined,
+    imageUrl: req.file ? `/uploads/${req.file.filename}` : "",
   });
 
   res.status(201).json(blog);
