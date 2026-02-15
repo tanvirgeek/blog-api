@@ -40,21 +40,61 @@ exports.login = async ({ email, password }) => {
 
 
 exports.refresh = async (token) => {
-  if (!token) throw new Error("Missing refresh token");
+  if (!token) {
+    const error = new Error("Missing refresh token");
+    error.statusCode = 400;
+    throw error;
+  }
 
-  const stored = await RefreshToken.findOne({
-    token,
+  // 1️⃣ Check token exists in DB
+  const storedToken = await RefreshToken.findOne({ token, revoked: false });
+  if (!storedToken) {
+    const error = new Error("Invalid refresh token");
+    error.statusCode = 401;
+    throw error;
+  }
+
+  let decoded;
+  try {
+    // 2️⃣ Verify JWT
+    decoded = jwt.verify(token, process.env.REFRESH_TOKEN_SECRET);
+  } catch (err) {
+    // 3️⃣ Handle expired token
+    if (err.name === "TokenExpiredError") {
+      storedToken.revoked = true;
+      await storedToken.save();
+      const error = new Error("Refresh token expired");
+      error.statusCode = 401;
+      throw error;
+    }
+    const error = new Error("Invalid refresh token");
+    error.statusCode = 401;
+    throw error;
+  }
+
+  // 4️⃣ Generate new tokens (rotation)
+  const newAccessToken = generateAccessToken({ id: decoded.id });
+  const newRefreshToken = generateRefreshToken({ id: decoded.id });
+
+  // 5️⃣ Revoke old token
+  storedToken.revoked = true;
+  await storedToken.save();
+
+  // 6️⃣ Save new refresh token with expiresAt
+  const decodedNew = jwt.decode(newRefreshToken); // get exp in seconds
+  await RefreshToken.create({
+    token: newRefreshToken,
+    user: decoded.id,
     revoked: false,
+    expiresAt: new Date(decodedNew.exp * 1000),
   });
 
-  if (!stored) throw new Error("Invalid refresh token");
-
-  const decoded = jwt.verify(token, process.env.REFRESH_TOKEN_SECRET);
-
   return {
-    accessToken: generateAccessToken({ id: decoded.id }),
+    accessToken: newAccessToken,
+    refreshToken: newRefreshToken,
   };
 };
+
 
 exports.logout = async (token) => {
   if (!token) throw new Error("Missing refresh token");

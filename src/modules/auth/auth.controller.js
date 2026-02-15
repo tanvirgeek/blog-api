@@ -20,9 +20,37 @@ exports.login = async (req, res) => {
 };
 
 exports.refresh = async (req, res) => {
-  const result = await service.refresh(req.body.refreshToken);
-  res.json(result);
+  try {
+    const { refreshToken } = req.body;
+
+    if (!refreshToken) {
+      return res.status(400).json({ message: "Refresh token is required" });
+    }
+
+    const result = await service.refresh(refreshToken);
+
+    return res.status(200).json(result);
+  } catch (error) {
+    console.error("Refresh Error:", error);
+
+    // Use statusCode from service if available
+    if (error.statusCode) {
+      return res.status(error.statusCode).json({ message: error.message });
+    }
+
+    // JWT errors fallback
+    if (error.name === "TokenExpiredError") {
+      return res.status(401).json({ message: "Refresh token expired" });
+    }
+    if (error.name === "JsonWebTokenError") {
+      return res.status(401).json({ message: "Invalid refresh token" });
+    }
+
+    // Unknown errors
+    return res.status(500).json({ message: "Internal server error" });
+  }
 };
+
 
 exports.logout = async (req, res) => {
   try {
