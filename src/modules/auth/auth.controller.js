@@ -56,14 +56,13 @@ exports.logout = async (req, res) => {
   try {
     const { refreshToken } = req.body;
 
-    if (!refreshToken) {
-      return res.status(400).json({ message: "Missing refresh token" });
-    }
-
     const result = await service.logout(refreshToken);
 
-    res.json(result); // { message: "Logged out successfully" }
+    res.json(result);
   } catch (err) {
-    res.status(400).json({ message: err.message });
+    res.status(err.statusCode || 400).json({
+      message: err.message,
+    });
   }
 };
+

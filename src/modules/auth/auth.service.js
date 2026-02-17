@@ -100,11 +100,14 @@ exports.logout = async (token) => {
   if (!token) throw new Error("Missing refresh token");
 
   const stored = await RefreshToken.findOne({ token });
-  if (!stored) return { message: "Token already invalidated" };
 
-  stored.revoked = true;
-  await stored.save();
+  if (stored && !stored.revoked) {
+    stored.revoked = true;
+    await stored.save();
+  }
 
   return { message: "Logged out successfully" };
 };
+
+
 
